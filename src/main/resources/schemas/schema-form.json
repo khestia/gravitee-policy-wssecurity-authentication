@@ -1,0 +1,19 @@
+{
+  "type" : "object",
+  "id" : "urn:jsonschema:io:gravitee:policy:wssecurity:authentication:configuration:WSSecurityAuthenticationPolicyConfiguration",
+  "properties" : {
+    "authenticationProviders" : {
+      "type" : "array",
+      "title": "Authentication providers",
+      "description": "Authentication provider resources used to authenticate users. By providing multiple providers, the gateway will try each of them until the user is authenticated.",
+      "items" : {
+        "type" : "string",
+        "description": "Name of the authentication provider to use",
+        "title": "Identity Provider"
+      }
+    }
+  },
+  "required": [
+    "authenticationProviders"
+  ]
+}
