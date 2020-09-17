@@ -115,7 +115,7 @@ public class WSSecurityAuthenticationPolicy {
                         XPath xpath = XPathFactory.newInstance().newXPath();
                         xpath.setNamespaceContext(namespaceContext);
 
-                        XPathExpression expr = xpath.compile("//soapenv:Envelope//soapenv:Header//wsse:Security//wsse:UsernameToken//wsse:Username//text() | //soapenv:Envelope//soapenv:Header//wsse:Security//wsse:UsernameToken//wsse:Password//text()");
+                        XPathExpression expr = xpath.compile("//*[local-name()='Envelope']//*[local-name()='Header']//*[local-name()='Security']//*[local-name()='UsernameToken']//*[local-name()='Username']//text() | //*[local-name()='Envelope']//*[local-name()='Header']//*[local-name()='Security']//*[local-name()='UsernameToken']//*[local-name()='Password']//text()");
                         Object result = expr.evaluate(doc, XPathConstants.NODESET);
                         NodeList nodes = (NodeList) result;
 
