@@ -31,9 +31,8 @@ import io.gravitee.policy.wssecurity.authentication.configuration.WSSecurityAuth
 import io.gravitee.resource.api.ResourceManager;
 import io.gravitee.resource.authprovider.api.Authentication;
 import io.gravitee.resource.authprovider.api.AuthenticationProviderResource;
-import org.w3c.dom.Document;
-import org.w3c.dom.NodeList;
-
+import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.xml.namespace.NamespaceContext;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -41,8 +40,8 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathFactory;
-import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicBoolean;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
@@ -53,11 +52,11 @@ public class WSSecurityAuthenticationPolicy {
     private static final String WSSECURITY_AUTH_UNAUTHORIZED = "WSSECURITY_AUTH_UNAUTHORIZED";
 
     private final NamespaceContext namespaceContext = new NamespaceContext() {
-        private final static String SOAP_NAMESPACE_PREFIX = "soapenv";
-        private final static String SOAP_NAMESPACE = "http://schemas.xmlsoap.org/soap/envelope/";
+        private static final String SOAP_NAMESPACE_PREFIX = "soapenv";
+        private static final String SOAP_NAMESPACE = "http://schemas.xmlsoap.org/soap/envelope/";
 
-        private final static String WSSEC_NAMESPACE_PREFIX = "wsse";
-        private final static String WSSEC_NAMESPACE = "http://schemas.xmlsoap.org/ws/2003/06/secext";
+        private static final String WSSEC_NAMESPACE_PREFIX = "wsse";
+        private static final String WSSEC_NAMESPACE = "http://schemas.xmlsoap.org/ws/2003/06/secext";
 
         @Override
         public String getNamespaceURI(String prefix) {
@@ -81,7 +80,7 @@ public class WSSecurityAuthenticationPolicy {
         }
     };
 
-    private final static String USERNAME_VARIABLE = "username";
+    private static final String USERNAME_VARIABLE = "username";
 
     /**
      * WS Security authentication policy configuration
@@ -95,7 +94,6 @@ public class WSSecurityAuthenticationPolicy {
     @OnRequestContent
     public ReadWriteStream onRequestContent(Request request, ExecutionContext executionContext, PolicyChain policyChain) {
         return new BufferedReadWriteStream() {
-
             Buffer buffer = Buffer.buffer();
 
             @Override
@@ -115,7 +113,9 @@ public class WSSecurityAuthenticationPolicy {
                         XPath xpath = XPathFactory.newInstance().newXPath();
                         xpath.setNamespaceContext(namespaceContext);
 
-                        XPathExpression expr = xpath.compile("//*[local-name()='Envelope']//*[local-name()='Header']//*[local-name()='Security']//*[local-name()='UsernameToken']//*[local-name()='Username']//text() | //*[local-name()='Envelope']//*[local-name()='Header']//*[local-name()='Security']//*[local-name()='UsernameToken']//*[local-name()='Password']//text()");
+                        XPathExpression expr = xpath.compile(
+                            "//*[local-name()='Envelope']//*[local-name()='Header']//*[local-name()='Security']//*[local-name()='UsernameToken']//*[local-name()='Username']//text() | //*[local-name()='Envelope']//*[local-name()='Header']//*[local-name()='Security']//*[local-name()='UsernameToken']//*[local-name()='Password']//text()"
+                        );
                         Object result = expr.evaluate(doc, XPathConstants.NODESET);
                         NodeList nodes = (NodeList) result;
 
@@ -126,26 +126,33 @@ public class WSSecurityAuthenticationPolicy {
 
                             AtomicBoolean authenticated = new AtomicBoolean(false);
 
-                            Iterator<String> authProviders = wsSecurityAuthenticationPolicyConfiguration.getAuthenticationProviders().iterator();
+                            Iterator<String> authProviders = wsSecurityAuthenticationPolicyConfiguration
+                                .getAuthenticationProviders()
+                                .iterator();
                             while (!authenticated.get() && authProviders.hasNext()) {
-                                AuthenticationProviderResource authProvider = executionContext.getComponent(ResourceManager.class).getResource(
-                                        authProviders.next(), AuthenticationProviderResource.class);
+                                AuthenticationProviderResource authProvider = executionContext
+                                    .getComponent(ResourceManager.class)
+                                    .getResource(authProviders.next(), AuthenticationProviderResource.class);
 
                                 if (authProvider == null) {
                                     continue;
                                 }
 
-                                authProvider.authenticate(username, password, new Handler<Authentication>() {
-                                    @Override
-                                    public void handle(Authentication authentication) {
-                                        // We succeed to authenticate the user
-                                        if (authentication != null) {
-                                            executionContext.setAttribute(ExecutionContext.ATTR_USER, authentication.getUsername());
-                                            request.metrics().setUser(authentication.getUsername());
-                                            authenticated.set(true);
+                                authProvider.authenticate(
+                                    username,
+                                    password,
+                                    new Handler<Authentication>() {
+                                        @Override
+                                        public void handle(Authentication authentication) {
+                                            // We succeed to authenticate the user
+                                            if (authentication != null) {
+                                                executionContext.setAttribute(ExecutionContext.ATTR_USER, authentication.getUsername());
+                                                request.metrics().setUser(authentication.getUsername());
+                                                authenticated.set(true);
+                                            }
                                         }
                                     }
-                                });
+                                );
                             }
 
                             if (authenticated.get()) {
@@ -171,11 +178,13 @@ public class WSSecurityAuthenticationPolicy {
     }
 
     private void sendError(PolicyChain policyChain, String username) {
-        policyChain.streamFailWith(PolicyResult.failure(
+        policyChain.streamFailWith(
+            PolicyResult.failure(
                 WSSECURITY_AUTH_UNAUTHORIZED,
                 HttpStatusCode.UNAUTHORIZED_401,
-                "Unauthorized", Maps.<String, Object>builder()
-                        .put(USERNAME_VARIABLE, username)
-                        .build()));
+                "Unauthorized",
+                Maps.<String, Object>builder().put(USERNAME_VARIABLE, username).build()
+            )
+        );
     }
 }
