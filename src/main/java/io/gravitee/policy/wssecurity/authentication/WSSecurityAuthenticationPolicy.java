@@ -121,8 +121,8 @@ public class WSSecurityAuthenticationPolicy {
 
                         if (nodes.getLength() >= 2) {
                             // Extract credentials
-                            String username = nodes.item(0).getNodeValue();
-                            String password = nodes.item(1).getNodeValue();
+                            String username = nodes.item(0).getNodeValue().trim();
+                            String password = nodes.item(1).getNodeValue().trim();
 
                             AtomicBoolean authenticated = new AtomicBoolean(false);
 
